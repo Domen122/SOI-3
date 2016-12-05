@@ -15,7 +15,7 @@ vector<int> bufor;
 
 Semaphore 		empty(MAX_BUFOR), 
 			canRead(0), 
-			canAwrite(0), 
+			canAwrite(20), 
 			mutex(1); 
 
 void wypisz()
@@ -44,8 +44,9 @@ void* produceB(void* ptr)
 			if( bufor.size() > 3 ) canRead.v();
 			cout << "B wyprodukowało "<<random;//<<"suma to "<<suma; 
 			wypisz();
-			
 		mutex.v();
+		int suma = accumulate(bufor.begin(),bufor.end(),0);
+		if(suma<20)for(int i=0;i<random;++i)canAwrite.p();
 
 	}
 } 
@@ -56,17 +57,17 @@ void* produceA(void* ptr)
 
 	while(true)
 	{	
-		unsigned int sleepTime = ((rand() % 5) + 3) * 10000;
+		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
 		unsigned int random = (rand()%10+1);
 		usleep(sleepTime);
-		int suma= accumulate(bufor.begin(),bufor.end(),0);
-		if(suma<20 )canAwrite.v();
+		
 		canAwrite.p();
 		
 		empty.p();
 		mutex.p();
 			bufor.push_back(random);
 			if( bufor.size() > 3 ) canRead.v();
+			canAwrite.v();
 			cout << "A wyprodukowało "<<random;//<<"suma to "<<suma; 
 			wypisz();
 		mutex.v();
@@ -80,7 +81,7 @@ void* consume(void* numerKonsumenta)
 	
 	while(true)
 	{
-		unsigned int sleepTime = ((rand() % 4) + 2) * 10000;
+		unsigned int sleepTime = ((rand() % 4) + 2) * 100000;
 		usleep(sleepTime);
 			
 		canRead.p();
@@ -89,7 +90,9 @@ void* consume(void* numerKonsumenta)
 			bufor.erase(bufor.begin());
 			wypisz();				
 			empty.v();
-		mutex.v();			
+		mutex.v();
+		int suma = accumulate(bufor.begin(),bufor.end(),0);
+		if(suma<20)for(int i=0;i<20-suma;++i)canAwrite.v();			
 	}
 }
 
