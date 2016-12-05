@@ -1,106 +1,102 @@
+#include <iostream>
 #include <pthread.h>
 #include <vector>
 #include <unistd.h>
 #include <ctime>
 #include <cstdlib>
 #include "monitor.h"
-#include <iostream>
-#include <semaphore.h>
-#include <sys/types.h>
-#include <sys/sem.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
+#include <numeric>
+
+#define MAX_BUFOR 9 // Maksymalna pojemnosc bufora
 
 using namespace std;
 
-#define MAX_BUFOR 9
-#define MIN_BUFOR 3
-sem_t semm;
 vector<int> bufor;
 
-Semaphore empty(MAX_BUFOR), canAwrite(1), canRead(0), mutex(1);
+Semaphore 		empty(MAX_BUFOR), 
+			canRead(0), 
+			canAwrite(0), 
+			mutex(1); 
 
-void Wypisz()
+void wypisz()
 {
-    cout<<"Bufor: ";
-    for(auto it= bufor.begin();it!=bufor.end();++it)
-    {
-        cout<<" "<<*it<<" ";
-    }
-    cout<<endl;
-}
+	cout << " 			Bufor zawiera:";
+	for(auto it = bufor.begin(); it != bufor.end(); ++it)
+	{
+		cout << " " << *it << " ";
+	}
+	cout << endl;
+}	
 
-void* produceB(void *ptr)
+void* produceB(void* ptr)
 {
-    srand(time(NULL));
+	srand( time(NULL) );
 
-    while(true)
-    {
-        int random= rand()%10+1;
-        int sleepTime= (rand()%4+2)*100000;
-        usleep(sleepTime);
+	while(true)
+	{
+		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
+		unsigned int random = (rand()%10+1);
+		usleep(sleepTime);
+	
+		empty.p();
+		mutex.p();
+			bufor.push_back(random);
+			if( bufor.size() > 3 ) canRead.v();
+			cout << "B wyprodukowało "<<random;//<<"suma to "<<suma; 
+			wypisz();
+			
+		mutex.v();
 
-        empty.p();
-        mutex.p();
-            bufor.push_back(random);
-            for(int i=0;i<random;++i) canAwrite.p();
-            if(bufor.size()>3) canRead.v();
-            cout<<"B wyprodukował";
-            Wypisz();
-        mutex.v();
-        int sum_of_elements= 0;
-        sem_getvalue(canAwrite.getValue() ,&sum_of_elements);
-        if(sum_of_elements>20)canAwrite.v();
-
-    }
-}
+	}
+} 
 
 void* produceA(void* ptr)
 {
-    srand(time(NULL));
-    while(true)
-    {
-        int random= rand()%10+1;
-        int sleepTime= (rand()%4+2)*100000;
-        usleep(sleepTime);
+	srand( time(NULL) );
 
-        {
-        empty.p();
-        mutex.p();
-            bufor.push_back(random);
-            for(int i=0;i<random;++i) canAwrite.p();
-            if(bufor.size()>3) canRead.v();
-            cout<<"A wyprodukował";
-            Wypisz();
-        mutex.v();
-        int sum_of_elements= 0;
-        sem_getvalue(canAwrite.getValue() ,&sum_of_elements);
-        if(sum_of_elements>20)canAwrite.v();
-        }
-    }
+	while(true)
+	{	
+		unsigned int sleepTime = ((rand() % 5) + 3) * 10000;
+		unsigned int random = (rand()%10+1);
+		usleep(sleepTime);
+		int suma= accumulate(bufor.begin(),bufor.end(),0);
+		if(suma<20 )canAwrite.v();
+		canAwrite.p();
+		
+		empty.p();
+		mutex.p();
+			bufor.push_back(random);
+			if( bufor.size() > 3 ) canRead.v();
+			cout << "A wyprodukowało "<<random;//<<"suma to "<<suma; 
+			wypisz();
+		mutex.v();
+		
+	}
 }
 
-void* consume(void *Consumernumber)
+void* consume(void* numerKonsumenta)
 {
-    srand(time(NULL));
-
-    while(true)
-    {
-        int sleepTime= (rand()%4+2)*100000;
-        usleep(sleepTime);
-        canRead.p();
-        mutex.p();
-            cout<<"Konsument "<< *(int*)Consumernumber<<"usuwa "<<bufor.front()<<endl;
-            for(int i=0;i<*bufor.begin();++i) canAwrite.v();
-            bufor.erase(bufor.begin());
-            Wypisz();
-            empty.v();
-        mutex.v();
-    }
+	srand( time(NULL) );
+	
+	while(true)
+	{
+		unsigned int sleepTime = ((rand() % 4) + 2) * 10000;
+		usleep(sleepTime);
+			
+		canRead.p();
+		mutex.p();
+			cout << "Konsument " << *(int*)numerKonsumenta << " zdejmuje " << bufor.front() << ".";
+			bufor.erase(bufor.begin());
+			wypisz();				
+			empty.v();
+		mutex.v();			
+	}
 }
-int main()
+
+int main() 
 {
-    pthread_t kons1, kons2, prodA, prodB;
+	
+	pthread_t kons1, kons2, prodA, prodB;
 
 	unsigned int *iDKonsumenta1, *iDKonsumenta2;
 
@@ -118,13 +114,13 @@ int main()
 	pthread_create(&prodA, NULL, produceA, (void*) ptr);
 
 	pthread_join(kons1, NULL);
-    pthread_join(prodB, NULL);
-    pthread_join(kons2, NULL);
-    pthread_join(prodA, NULL);
+    	pthread_join(prodB, NULL);
+    	pthread_join(kons2, NULL);
+    	pthread_join(prodA, NULL);
 
 	delete iDKonsumenta1;
 	delete iDKonsumenta2;
 
 	cout << "	W buforze pozostalo " << bufor.size() << " elementow." << endl;
 	return 0;
-}
+}	
