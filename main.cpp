@@ -15,7 +15,7 @@ vector<int> bufor;
 
 Semaphore 		empty(MAX_BUFOR), 
 			canRead(0), 
-			canAwrite(20), 
+			canAwrite(1), 
 			mutex(1); 
 
 void wypisz()
@@ -37,17 +37,16 @@ void* produceB(void* ptr)
 		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
 		unsigned int random = (rand()%10+1);
 		usleep(sleepTime);
-	
 		empty.p();
 		mutex.p();
 			bufor.push_back(random);
+			int suma= accumulate(bufor.begin(),bufor.end(),0);
+			if(suma>=20&&(suma-random)<20)canAwrite.p();
 			if( bufor.size() > 3 ) canRead.v();
-			cout << "B wyprodukowało "<<random;//<<"suma to "<<suma; 
+			cout << "B wyprodukowało "<<random;
 			wypisz();
 		mutex.v();
-		int suma = accumulate(bufor.begin(),bufor.end(),0);
-		if(suma<20)for(int i=0;i<random;++i)canAwrite.p();
-
+		 
 	}
 } 
 
@@ -60,18 +59,27 @@ void* produceA(void* ptr)
 		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
 		unsigned int random = (rand()%10+1);
 		usleep(sleepTime);
-		
 		canAwrite.p();
-		
 		empty.p();
-		mutex.p();
+		mutex.p();	
 			bufor.push_back(random);
 			if( bufor.size() > 3 ) canRead.v();
-			canAwrite.v();
-			cout << "A wyprodukowało "<<random;//<<"suma to "<<suma; 
+			int suma= accumulate(bufor.begin(),bufor.end(),0);
+			if(suma<20)canAwrite.v();		
+			cout << "A wyprodukowało "<<random;
 			wypisz();
 		mutex.v();
-		
+/*		if((suma-random)<20&&suma>=20)
+		{
+			for(int i=1;i<(20-suma+random);++i)
+			{
+				canAwrite.p();
+				stansem--;
+				cout<<"Sem1 "<<stansem;
+			}
+		}
+		else if((suma-random)<20){for(int i=1;i<random;++i){canAwrite.p();stansem--;cout<<"Sem2 "<<stansem;}}
+		//cout<<"Sem "<<stansem; */
 	}
 }
 
@@ -87,12 +95,13 @@ void* consume(void* numerKonsumenta)
 		canRead.p();
 		mutex.p();
 			cout << "Konsument " << *(int*)numerKonsumenta << " zdejmuje " << bufor.front() << ".";
+			int suma= accumulate(bufor.begin(),bufor.end(),0);
+			if((suma-bufor.front())<20&&suma>=20)canAwrite.v();
 			bufor.erase(bufor.begin());
 			wypisz();				
 			empty.v();
 		mutex.v();
-		int suma = accumulate(bufor.begin(),bufor.end(),0);
-		if(suma<20)for(int i=0;i<20-suma;++i)canAwrite.v();			
+					
 	}
 }
 
