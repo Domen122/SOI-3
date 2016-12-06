@@ -69,17 +69,6 @@ void* produceA(void* ptr)
 			cout << "A wyprodukowało "<<random;
 			wypisz();
 		mutex.v();
-/*		if((suma-random)<20&&suma>=20)
-		{
-			for(int i=1;i<(20-suma+random);++i)
-			{
-				canAwrite.p();
-				stansem--;
-				cout<<"Sem1 "<<stansem;
-			}
-		}
-		else if((suma-random)<20){for(int i=1;i<random;++i){canAwrite.p();stansem--;cout<<"Sem2 "<<stansem;}}
-		//cout<<"Sem "<<stansem; */
 	}
 }
 
