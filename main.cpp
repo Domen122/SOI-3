@@ -20,7 +20,7 @@ Semaphore 		empty(MAX_BUFOR),
 
 void wypisz()
 {
-	cout << " 			Bufor zawiera:";
+	cout << " Bufor contains:";
 	for(auto it = bufor.begin(); it != bufor.end(); ++it)
 	{
 		cout << " " << *it << " ";
@@ -34,19 +34,19 @@ void* produceB(void* ptr)
 
 	while(true)
 	{
-		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
-		unsigned int random = (rand()%10+1);
-		usleep(sleepTime);
-		empty.p();
-		mutex.p();
-			bufor.push_back(random);
-			int suma= accumulate(bufor.begin(),bufor.end(),0);
-			if(suma>=20&&(suma-random)<20)canAwrite.p();
-			if( bufor.size() > 3 ) canRead.v();
-			cout << "B wyprodukowało "<<random;
-			wypisz();
-		mutex.v();
-		 
+	unsigned int sleepTime = ((rand() % 6) + 4) * 100000;
+	unsigned int random = (rand()%10+1);
+	usleep(sleepTime);
+	cout<<"B wants to write"<<endl;
+	empty.p();
+	mutex.p();
+		bufor.push_back(random);
+		int suma= accumulate(bufor.begin(),bufor.end(),0);
+		if(suma>=20&&(suma-random)<20)canAwrite.p();
+		if( bufor.size() > 3 ) canRead.v();
+		cout << "B produced "<<random<<"	      ";
+		wypisz();
+		mutex.v();		 
 	}
 } 
 
@@ -56,18 +56,19 @@ void* produceA(void* ptr)
 
 	while(true)
 	{	
-		unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
-		unsigned int random = (rand()%10+1);
-		usleep(sleepTime);
-		canAwrite.p();
-		empty.p();
-		mutex.p();	
-			bufor.push_back(random);
-			if( bufor.size() > 3 ) canRead.v();
-			int suma= accumulate(bufor.begin(),bufor.end(),0);
-			if(suma<20)canAwrite.v();		
-			cout << "A wyprodukowało "<<random;
-			wypisz();
+	unsigned int sleepTime = ((rand() % 5) + 3) * 100000;
+	unsigned int random = (rand()%10+1);
+	usleep(sleepTime);
+	cout<<"A wants to write"<<endl;
+	canAwrite.p();
+	empty.p();
+	mutex.p();	
+		bufor.push_back(random);
+		if( bufor.size() > 3 ) canRead.v();
+		int suma= accumulate(bufor.begin(),bufor.end(),0);
+		if(suma<20)canAwrite.v();		
+		cout << "A produced "<<random<<"	      ";
+		wypisz();
 		mutex.v();
 	}
 }
@@ -78,17 +79,17 @@ void* consume(void* numerKonsumenta)
 	
 	while(true)
 	{
-		unsigned int sleepTime = ((rand() % 4) + 2) * 100000;
-		usleep(sleepTime);
-			
-		canRead.p();
-		mutex.p();
-			cout << "Konsument " << *(int*)numerKonsumenta << " zdejmuje " << bufor.front() << ".";
-			int suma= accumulate(bufor.begin(),bufor.end(),0);
-			if((suma-bufor.front())<20&&suma>=20)canAwrite.v();
-			bufor.erase(bufor.begin());
-			wypisz();				
-			empty.v();
+	unsigned int sleepTime = ((rand() % 4) + 2) * 1000000;
+	usleep(sleepTime);
+	cout << "Consumer " << *(int*)numerKonsumenta<<" wants to devour"<<endl;
+	canRead.p();
+	mutex.p();
+		cout << "Consumer " << *(int*)numerKonsumenta << " devoured " << bufor.front() << ".";
+		int suma= accumulate(bufor.begin(),bufor.end(),0);
+		if((suma-bufor.front())<20&&suma>=20)canAwrite.v();
+		bufor.erase(bufor.begin());
+		wypisz();				
+		empty.v();
 		mutex.v();
 					
 	}
